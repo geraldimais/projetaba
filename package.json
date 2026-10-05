@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "PROJETABA — sistema de gestão e projeção em tempo real",
+  "description": "PROJET-ABA — sistema de gestão e projeção em tempo real",
   "engines": {
     "node": ">=20"
   },
@@ -15,15 +15,18 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.2",
+    "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "helmet": "^8.1.0",
     "jszip": "^3.10.1",
     "multer": "^2.0.2",
+    "mysql2": "^3.24.5",
     "nanoid": "^5.1.5",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "5.4.149",
+    "pptx-wasm": "^0.3.0",
     "qrcode": "^1.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

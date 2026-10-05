@@ -1,40 +1,48 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import BrandMark from "../components/BrandMark.jsx";
-import { api, savePresenter } from "../lib/api.js";
-
-const ACCEPT = ".pdf,.pptx,.png,.jpg,.jpeg,.webp";
+import { api } from "../lib/api.js";
+import { useAuth } from "../lib/auth.jsx";
+import { usePageTitle } from "../lib/pageTitle.js";
 
 export default function HomePage() {
-  const navigate = useNavigate();
-  const [files, setFiles] = useState([]);
-  const [hot, setHot] = useState(false);
+  const { user, ready, setUser } = useAuth();
+  const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  usePageTitle("Entrar — PROJET-ABA");
 
-  function addFiles(list) {
-    setFiles((current) => [...current, ...Array.from(list || [])].slice(0, 5));
-    setError("");
+  if (!ready) {
+    return (
+      <div className="shell">
+        <header className="topbar">
+          <BrandMark />
+        </header>
+        <main id="conteudo" className="home">
+          <p className="wait" role="status">
+            A carregar…
+          </p>
+        </main>
+      </div>
+    );
   }
 
-  async function start(event) {
+  if (user) {
+    return <Navigate to="/app" replace />;
+  }
+
+  async function submit(event) {
     event.preventDefault();
-    if (!files.length || busy) {
-      return;
-    }
     setBusy(true);
     setError("");
     try {
-      const session = await api("/api/sessions", { method: "POST", body: JSON.stringify({}) });
-      savePresenter(session.token, session.presenterKey);
-      const body = new FormData();
-      files.forEach((file) => body.append("file", file));
-      await api(`/api/sessions/${encodeURIComponent(session.token)}/files`, {
-        method: "POST",
-        headers: { "X-Presenter-Key": session.presenterKey },
-        body,
-      });
-      navigate(`/sessao/${session.token}`);
+      const path = mode === "register" ? "/api/auth/register" : "/api/auth/login";
+      const body = mode === "register" ? { name, email, password } : { email, password };
+      const data = await api(path, { method: "POST", body: JSON.stringify(body) });
+      setUser(data.user);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -50,57 +58,84 @@ export default function HomePage() {
           Entrar com código
         </Link>
       </header>
-      <main className="home">
-        <form className="home-card" onSubmit={start}>
-          <div
-            className={`dropzone ${hot ? "hot" : ""}`}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setHot(true);
-            }}
-            onDragLeave={() => setHot(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setHot(false);
-              addFiles(event.dataTransfer.files);
-            }}
-          >
-            <input
-              type="file"
-              accept={ACCEPT}
-              multiple
-              aria-label="Área para enviar apresentação. PDF, PPTX, PNG ou JPG."
-              onChange={(event) => addFiles(event.target.files)}
-            />
-            <div>
-              <strong>Solte o deck aqui</strong>
-              <p>PDF, PPTX, PNG ou JPG</p>
-              <span className="ghost" style={{ pointerEvents: "none" }}>
-                Escolher ficheiros
-              </span>
-            </div>
-          </div>
-          <ul className="file-list">
-            {files.map((file, index) => (
-              <li key={`${file.name}-${index}`}>
-                <span>{file.name}</span>
-                <button
-                  type="button"
-                  className="ghost"
-                  aria-label={`Remover ${file.name}`}
-                  onClick={() => setFiles((current) => current.filter((_, i) => i !== index))}
-                >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-          {error ? <p className="error">{error}</p> : null}
-          <div className="home-actions">
-            <button className="cta" type="submit" disabled={!files.length || busy}>
-              {busy ? "A preparar sessão…" : "Iniciar projeção"}
+      <main id="conteudo" className="home home-auth">
+        <section className="home-copy">
+          <img className="home-logo" src="/brand-logo.png" alt="PROJET-ABA" />
+          <h1>Projete com conta, biblioteca e métricas.</h1>
+          <p>
+            Prepare várias apresentações, escolha qual vai ao projetor e acompanhe espectadores, tempo ao vivo e
+            troca de slides. O público entra só com o código ou QR.
+          </p>
+        </section>
+        <form className="home-card auth-card" onSubmit={submit} aria-busy={busy}>
+          <div className="tabs">
+            <button
+              type="button"
+              aria-pressed={mode === "login"}
+              className={mode === "login" ? "tab on" : "tab"}
+              onClick={() => setMode("login")}
+            >
+              Entrar
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === "register"}
+              className={mode === "register" ? "tab on" : "tab"}
+              onClick={() => setMode("register")}
+            >
+              Criar conta
             </button>
           </div>
+          {mode === "register" ? (
+            <label htmlFor="auth-name">
+              Nome <span aria-hidden="true">*</span>
+              <input
+                id="auth-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                autoComplete="name"
+                required={mode === "register"}
+                aria-required="true"
+              />
+            </label>
+          ) : null}
+          <label htmlFor="auth-email">
+            E-mail <span aria-hidden="true">*</span>
+            <input
+              id="auth-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              required
+              aria-required="true"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "auth-error" : undefined}
+            />
+          </label>
+          <label htmlFor="auth-password">
+            Senha <span aria-hidden="true">*</span>
+            <input
+              id="auth-password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
+              minLength={8}
+              required
+              aria-required="true"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "auth-error" : undefined}
+            />
+          </label>
+          {error ? (
+            <p className="error" id="auth-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <button className="cta" type="submit" disabled={busy}>
+            {busy ? "Aguarde…" : mode === "register" ? "Criar conta" : "Entrar"}
+          </button>
         </form>
       </main>
     </div>

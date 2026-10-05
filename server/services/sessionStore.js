@@ -21,14 +21,21 @@ export function publicSnapshot(session) {
     status: session.status,
     currentIndex: session.currentIndex,
     activeFileId: session.activeFileId,
+    currentUrl: session.currentUrl || null,
+    scroll: session.scroll || { x: 0, y: 0, key: "document" },
     viewerCount: session.viewers.size,
     files: session.files.map((file) => ({
       fileId: file.fileId,
+      presentationId: file.presentationId || file.fileId,
       originalName: file.originalName,
       kind: file.kind,
+      sourceUrl: file.sourceUrl || null,
+      history: file.kind === "url" ? file.history || [file.sourceUrl] : undefined,
       pageCount: file.pageCount,
       processingStatus: file.processingStatus,
       hasExtractedSlides: file.hasExtractedSlides,
+      videos: file.videos || [],
+      renderRelPath: file.renderRelPath || null,
     })),
   };
 }

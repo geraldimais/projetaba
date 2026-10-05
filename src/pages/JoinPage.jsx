@@ -1,23 +1,28 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import BrandMark from "../components/BrandMark.jsx";
+import { usePageTitle } from "../lib/pageTitle.js";
 
 export default function JoinPage() {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  usePageTitle("Código da sessão — PROJET-ABA");
 
-  async function submit(event) {
-    event.preventDefault();
+  function formattedToken() {
     const token = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    const formatted = token.length > 4 ? `${token.slice(0, 4)}-${token.slice(4)}` : token;
+    return token.length > 4 ? `${token.slice(0, 4)}-${token.slice(4)}` : token;
+  }
+
+  async function openSession(path) {
+    const formatted = formattedToken();
     try {
       const response = await fetch(`/api/sessions/${encodeURIComponent(formatted)}`);
       if (!response.ok) {
         setError("Código inválido ou sessão encerrada.");
         return;
       }
-      navigate(`/ver/${formatted}`);
+      navigate(`${path}/${formatted}`);
     } catch {
       setError("Não foi possível entrar na sessão.");
     }
@@ -26,10 +31,18 @@ export default function JoinPage() {
   return (
     <div className="shell">
       <header className="topbar">
-        <BrandMark />
+        <BrandMark to="/" />
+        <Link className="ghost" to="/">
+          Conta
+        </Link>
       </header>
-      <main className="join">
-        <form onSubmit={submit}>
+      <main id="conteudo" className="join">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            openSession("/sessao");
+          }}
+        >
           <label htmlFor="token">Código da sessão</label>
           <input
             id="token"
@@ -37,13 +50,22 @@ export default function JoinPage() {
             onChange={(event) => setCode(event.target.value)}
             autoComplete="off"
             spellCheck="false"
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "token-error" : undefined}
             required
           />
-          {error ? <p className="error" id="token-error">{error}</p> : null}
+          {error ? (
+            <p className="error" id="token-error" role="alert">
+              {error}
+            </p>
+          ) : null}
           <button className="cta" type="submit">
-            Entrar na projeção
+            Abrir painel do apresentador
           </button>
-          <p>Não tem código? Peça o QR ao apresentador.</p>
+          <button className="ghost" type="button" onClick={() => openSession("/projetar")}>
+            Abrir tela de projeção
+          </button>
+          <p className="url-note">O painel controla páginas e arquivos. A projeção é só o slide ao vivo.</p>
         </form>
       </main>
     </div>

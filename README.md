@@ -1,4 +1,4 @@
-# PROJETABA
+# PROJET-ABA
 
 Sistema de gestão e projeção em tempo real. O apresentador carrega PDF, PPTX ou imagens; a plateia entra por **token** ou **QR code** e acompanha o slide atual.
 

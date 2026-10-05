@@ -3,7 +3,17 @@ export async function api(path, options = {}) {
   if (options.body && !(options.body instanceof FormData) && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
-  const response = await fetch(path, { ...options, headers, credentials: "same-origin" });
+  let response;
+  try {
+    response = await fetch(path, { ...options, headers, credentials: "same-origin" });
+  } catch (error) {
+    if (options.signal?.aborted || error.name === "AbortError") {
+      const abort = new Error("AbortError");
+      abort.name = "AbortError";
+      throw abort;
+    }
+    throw error;
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.error || "Falha na requisição.");
@@ -11,10 +21,20 @@ export async function api(path, options = {}) {
   return data;
 }
 
+export function capturePresenterKey(token) {
+  return sessionStorage.getItem(`projetaba:${token}`) || "";
+}
+
 export function savePresenter(token, presenterKey) {
-  sessionStorage.setItem(`projetaba:${token}`, presenterKey);
+  if (token && presenterKey) {
+    sessionStorage.setItem(`projetaba:${token}`, presenterKey);
+  }
 }
 
 export function loadPresenter(token) {
-  return sessionStorage.getItem(`projetaba:${token}`) || "";
+  return capturePresenterKey(token);
+}
+
+export function presenterShareUrl(token) {
+  return `${window.location.origin}/sessao/${token}`;
 }
