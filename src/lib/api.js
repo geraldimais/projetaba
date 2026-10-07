@@ -22,6 +22,16 @@ export async function api(path, options = {}) {
 }
 
 export function capturePresenterKey(token) {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  const hash = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""));
+  const fromHash = hash.get("k") || hash.get("pk") || "";
+  if (fromHash) {
+    sessionStorage.setItem(`projetaba:${token}`, fromHash);
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    return fromHash;
+  }
   return sessionStorage.getItem(`projetaba:${token}`) || "";
 }
 
@@ -35,6 +45,13 @@ export function loadPresenter(token) {
   return capturePresenterKey(token);
 }
 
-export function presenterShareUrl(token) {
-  return `${window.location.origin}/sessao/${token}`;
+export function presenterShareUrl(token, presenterKey) {
+  const origin = window.location.origin;
+  const url = `${origin}/palestrante/${token}`;
+  const key = presenterKey || loadPresenter(token);
+  return key ? `${url}#k=${encodeURIComponent(key)}` : url;
+}
+
+export function telaoUrl(token) {
+  return `${window.location.origin}/telao/${token}`;
 }

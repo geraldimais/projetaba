@@ -54,7 +54,7 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 </head>
 <body>
   <div id="projetaba-chrome" role="navigation" aria-label="Controlos do apresentador">
-    <a class="pb-btn" href="/sessao/${encodeURIComponent(cfg.token)}?painel=1">Painel</a>
+    <a class="pb-btn" href="/palestrante/${encodeURIComponent(cfg.token)}">Painel</a>
     <button class="pb-btn" id="projetaba-prev" type="button">Anterior</button>
     <button class="pb-btn" id="projetaba-next" type="button">Próximo</button>
     <input id="projetaba-url" type="url" inputmode="url" value="${escapeAttr(cfg.url)}" aria-label="Endereço do site">
@@ -132,7 +132,7 @@ siteRouter.get("/:token/page", limiter, async (req, res) => {
   try {
     const { file, target } = await resolveTarget(req, session);
     if (!file || !target) {
-      res.redirect(`/sessao/${encodeURIComponent(session.token)}`);
+      res.redirect(`/palestrante/${encodeURIComponent(session.token)}`);
       return;
     }
     res.redirect(302, target.href);
@@ -152,7 +152,7 @@ siteRouter.get("/:token", limiter, async (req, res) => {
   try {
     const { file, target } = await resolveTarget(req, session);
     if (!file || !target) {
-      res.redirect(role === "presenter" ? `/sessao/${encodeURIComponent(session.token)}` : `/projetar/${encodeURIComponent(session.token)}`);
+      res.redirect(role === "presenter" ? `/palestrante/${encodeURIComponent(session.token)}` : `/telao/${encodeURIComponent(session.token)}`);
       return;
     }
     if (role === "viewer") {

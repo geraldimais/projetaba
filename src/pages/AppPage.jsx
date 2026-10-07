@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import BrandMark from "../components/BrandMark.jsx";
 import UploadBar from "../components/UploadBar.jsx";
-import { api } from "../lib/api.js";
+import { api, loadPresenter, presenterShareUrl, savePresenter, telaoUrl } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
+import { openCinemaWindow } from "../lib/fullscreen.js";
 import { MAX_FILE_MB } from "../lib/limits.js";
 import { usePageTitle } from "../lib/pageTitle.js";
 import { uploadPresentations } from "../lib/upload.js";
@@ -37,7 +38,8 @@ export default function AppPage() {
   const [urlValue, setUrlValue] = useState("");
   const [error, setError] = useState("");
   const [hot, setHot] = useState(false);
-  usePageTitle("Biblioteca — PROJET-ABA");
+  const [copied, setCopied] = useState("");
+  usePageTitle("Operador — PROJET-ABA");
 
   useEffect(() => {
     if (!user) {
@@ -112,7 +114,7 @@ export default function AppPage() {
   }
 
   async function removeDeck(id) {
-    if (!window.confirm("Remover esta apresentação da biblioteca?")) {
+    if (!window.confirm("Remover este conteúdo da biblioteca?")) {
       return;
     }
     try {
@@ -127,25 +129,56 @@ export default function AppPage() {
   async function project(ids) {
     const presentationIds = ids.length ? ids : selected;
     if (!presentationIds.length) {
-      setError("Selecione ao menos uma apresentação.");
+      setError("Selecione ao menos um item para projetar.");
       return;
     }
     setBusy(true);
     setError("");
     try {
+      if (live?.token) {
+        for (const presentationId of presentationIds) {
+          const result = await api(`/api/sessions/${encodeURIComponent(live.token)}/select`, {
+            method: "POST",
+            body: JSON.stringify({ presentationId }),
+          });
+          setLive(result.session || live);
+        }
+        return;
+      }
       const session = await api("/api/sessions", {
         method: "POST",
         body: JSON.stringify({ presentationIds }),
       });
-      navigate(`/sessao/${session.token}`);
+      savePresenter(session.token, session.presenterKey);
+      setLive({ ...session.session, token: session.token, telaoUrl: session.telaoUrl, presenterUrl: session.presenterUrl });
     } catch (err) {
-      if (err.message.includes("ao vivo") && live?.token) {
-        navigate(`/sessao/${live.token}`);
-        return;
-      }
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function endLive() {
+    if (!live?.token) {
+      return;
+    }
+    if (!window.confirm("Encerrar esta projeção? O telão e o palestrante param.")) {
+      return;
+    }
+    await api(`/api/sessions/${encodeURIComponent(live.token)}/end`, { method: "POST" });
+    setLive(null);
+  }
+
+  async function copySpeakerLink() {
+    if (!live?.token) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(presenterShareUrl(live.token, loadPresenter(live.token)));
+      setCopied("speaker");
+      window.setTimeout(() => setCopied(""), 2000);
+    } catch {
+      window.prompt("Link do palestrante", presenterShareUrl(live.token, loadPresenter(live.token)));
     }
   }
 
@@ -159,9 +192,6 @@ export default function AppPage() {
               Métricas
             </Link>
           ) : null}
-          <Link className="ghost" to="/entrar">
-            Código
-          </Link>
           <span className="who">{user?.name}</span>
           <button className="ghost" type="button" onClick={() => logout().then(() => navigate("/"))}>
             Sair
@@ -171,21 +201,42 @@ export default function AppPage() {
       <main id="conteudo" className="dash">
         <div className="dash-head">
           <div>
-            <p className="eyebrow">Biblioteca</p>
-            <h1>Suas apresentações</h1>
-            <p className="lede">Prepare os decks, carregue um site por URL e escolha o que vai para a projeção.</p>
+            <p className="eyebrow">Painel do operador</p>
+            <h1>Conteúdo para o telão</h1>
+            <p className="lede">
+              Receba o material do palestrante, carregue PDF, PPTX, imagem, vídeo ou um site e abra o telão no
+              computador do projetor.
+            </p>
           </div>
           <div className="dash-actions">
-            {live ? (
-              <Link className="ghost" to={`/sessao/${live.token}`}>
-                Continuar ao vivo
-              </Link>
-            ) : null}
             <button className="cta" type="button" disabled={busy || !selected.length} onClick={() => project(selected)}>
-              {busy && progress == null ? "A preparar…" : "Projetar selecionadas"}
+              {busy && progress == null ? "A preparar…" : live ? "Enviar ao telão" : "Projetar no telão"}
             </button>
           </div>
         </div>
+
+        {live?.token ? (
+          <section className="session-link" aria-label="Projeção ao vivo">
+            <p className="url-kicker">Projeção ao vivo · {live.token}</p>
+            <code>{telaoUrl(live.token)}</code>
+            <div className="session-link-actions">
+              <button className="cta mini" type="button" onClick={() => openCinemaWindow(telaoUrl(live.token))}>
+                Abrir telão
+              </button>
+              <button className="ghost mini" type="button" onClick={copySpeakerLink}>
+                Copiar link do palestrante
+              </button>
+              <button className="ghost mini" type="button" onClick={endLive}>
+                Encerrar
+              </button>
+            </div>
+            {copied === "speaker" ? (
+              <p className="copy-status" role="status">
+                Link do palestrante copiado
+              </p>
+            ) : null}
+          </section>
+        ) : null}
 
         <div
           className={`dropzone ${hot ? "hot" : ""}`}
@@ -262,7 +313,7 @@ export default function AppPage() {
               </label>
               <div className="deck-actions">
                 <button className="cta mini" type="button" onClick={() => project([deck.id])}>
-                  Projetar
+                  Enviar ao telão
                 </button>
                 <button className="ghost mini" type="button" onClick={() => removeDeck(deck.id)}>
                   Remover
@@ -272,7 +323,7 @@ export default function AppPage() {
           ))}
         </ul>
         {!decks.length ? (
-          <p className="wait">Ainda não há apresentações nesta conta. Solte um ficheiro acima ou carregue uma URL.</p>
+          <p className="wait">Ainda não há conteúdo nesta conta. Solte um ficheiro ou carregue uma URL.</p>
         ) : null}
       </main>
     </div>

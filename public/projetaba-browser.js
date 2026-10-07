@@ -56,7 +56,7 @@
       }) ||
       files[0];
     if (!file || file.kind !== "url") {
-      window.top.location.replace("/sessao/" + encodeURIComponent(token) + "?painel=1");
+      window.top.location.replace("/palestrante/" + encodeURIComponent(token));
       return;
     }
     var nextUrl = session.currentUrl || file.sourceUrl;

@@ -8,7 +8,7 @@ export default function BrandMark({ to = "/" }) {
         <span className="wordmark">
           PROJET<span className="aba">-ABA</span>
         </span>
-        <span className="kicker">SISTEMA DE GESTÃO E PROJEÇÃO</span>
+        <span className="kicker">OPERADOR · PALESTRANTE · TELÃO</span>
       </span>
     </Link>
   );

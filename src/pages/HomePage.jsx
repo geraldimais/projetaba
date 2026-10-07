@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import BrandMark from "../components/BrandMark.jsx";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -13,7 +13,7 @@ export default function HomePage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  usePageTitle("Entrar — PROJET-ABA");
+  usePageTitle("Operador — PROJET-ABA");
 
   if (!ready) {
     return (
@@ -54,17 +54,14 @@ export default function HomePage() {
     <div className="shell">
       <header className="topbar">
         <BrandMark />
-        <Link className="ghost" to="/entrar">
-          Entrar com código
-        </Link>
       </header>
       <main id="conteudo" className="home home-auth">
         <section className="home-copy">
           <img className="home-logo" src="/brand-logo.png" alt="PROJET-ABA" />
-          <h1>Projete com conta, biblioteca e métricas.</h1>
+          <h1>Opere o telão. O palestrante só controla.</h1>
           <p>
-            Prepare várias apresentações, escolha qual vai ao projetor e acompanhe espectadores, tempo ao vivo e
-            troca de slides. O público entra só com o código ou QR.
+            Crie a conta do operador, receba o conteúdo, abra o telão no projetor e envie ao palestrante o link dos
+            controlos. Não há entrada de participantes.
           </p>
         </section>
         <form className="home-card auth-card" onSubmit={submit} aria-busy={busy}>

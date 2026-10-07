@@ -1,7 +1,7 @@
 {
   "name": "PROJET-ABA",
   "short_name": "PROJET-ABA",
-  "description": "Projeção em tela cheia",
+  "description": "Operador, palestrante e telão — sem participantes",
   "start_url": "/",
   "display": "fullscreen",
   "background_color": "#000000",

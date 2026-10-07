@@ -33,6 +33,20 @@ export function isSessionOwner(req, session) {
   return false;
 }
 
+export function requireOperator(req, res, next) {
+  const session = getSession(req.params.token);
+  if (!session || session.status !== "live") {
+    res.status(404).json({ error: "Sessão não encontrada." });
+    return;
+  }
+  req.session = session;
+  if (!req.user || Number(req.user.id) !== Number(session.userId)) {
+    res.status(403).json({ error: "Só o operador pode alterar esta projeção." });
+    return;
+  }
+  next();
+}
+
 export function requirePresenter(req, res, next) {
   const session = getSession(req.params.token);
   if (!session || session.status !== "live") {

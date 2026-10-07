@@ -326,7 +326,7 @@
         siteWin.close();
       } catch (error) {}
     }
-    window.location.replace("/sessao/" + encodeURIComponent(token) + "?painel=1");
+    window.location.replace("/palestrante/" + encodeURIComponent(token));
   });
 
   if (openBtn) {

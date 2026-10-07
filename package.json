@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "PROJET-ABA — sistema de gestão e projeção em tempo real",
+  "description": "PROJET-ABA — operador, palestrante e telão. Sem acesso de participantes.",
   "engines": {
     "node": ">=20"
   },

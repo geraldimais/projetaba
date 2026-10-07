@@ -1,7 +1,6 @@
 import fsPromises from "node:fs/promises";
 import path from "node:path";
 import express from "express";
-import QRCode from "qrcode";
 import rateLimit from "express-rate-limit";
 import { COOKIE_NAME, MAX_FILES, PUBLIC_URL, cookieSecure } from "../config.js";
 import {
@@ -14,7 +13,7 @@ import {
   upsertSessionFile,
 } from "../db.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
-import { loadSession, presenterKeyFrom, requirePresenter } from "../middleware/presenterAuth.js";
+import { loadSession, presenterKeyFrom, requireOperator } from "../middleware/presenterAuth.js";
 import { attachPresentation, describeUpload } from "../services/fileProcessor.js";
 import { describeUrl } from "../services/urlPresentation.js";
 import {
@@ -41,17 +40,13 @@ function originOf(req) {
   return `${req.protocol}://${req.get("host")}`;
 }
 
-async function urlsFor(req, token) {
+function urlsFor(req, token) {
   const origin = originOf(req);
-  const projectionUrl = `${origin}/projetar/${token}`;
-  const presenterUrl = `${origin}/sessao/${token}`;
-  const joinUrl = projectionUrl;
-  const qrDataUrl = await QRCode.toDataURL(projectionUrl, {
-    margin: 1,
-    width: 320,
-    color: { dark: "#020617", light: "#f4f7fb" },
-  });
-  return { joinUrl, projectionUrl, presenterUrl, qrDataUrl };
+  return {
+    telaoUrl: `${origin}/telao/${token}`,
+    projectionUrl: `${origin}/telao/${token}`,
+    presenterUrl: `${origin}/palestrante/${token}`,
+  };
 }
 
 async function persistFile(session, entry) {
@@ -144,7 +139,7 @@ sessionsRouter.post("/", requireAuth, createLimiter, async (req, res, next) => {
       type: "session_start",
       payload: { presentationIds: ids },
     });
-    const urls = await urlsFor(req, token);
+    const urls = urlsFor(req, token);
     res.cookie(COOKIE_NAME, presenterKey, {
       httpOnly: true,
       sameSite: "lax",
@@ -159,13 +154,12 @@ sessionsRouter.post("/", requireAuth, createLimiter, async (req, res, next) => {
 
 sessionsRouter.get("/:token", loadSession, async (req, res, next) => {
   try {
-    const urls = await urlsFor(req, req.session.token);
+    const urls = urlsFor(req, req.session.token);
     res.json({
       ...publicSnapshot(req.session),
-      joinUrl: urls.joinUrl,
+      telaoUrl: urls.telaoUrl,
       projectionUrl: urls.projectionUrl,
       presenterUrl: urls.presenterUrl,
-      qrDataUrl: urls.qrDataUrl,
     });
   } catch (error) {
     next(error);
@@ -190,7 +184,7 @@ sessionsRouter.post("/:token/auth", optionalAuth, (req, res) => {
   res.json({ ok: true, token: session.token, owner: Boolean(req.user && Number(req.user.id) === Number(session.userId)) });
 });
 
-sessionsRouter.post("/:token/select", optionalAuth, requirePresenter, async (req, res, next) => {
+sessionsRouter.post("/:token/select", optionalAuth, requireOperator, async (req, res, next) => {
   try {
     const presentationId = String(req.body?.presentationId || "");
     const presentation = await getPresentation(presentationId, { blob: true });
@@ -232,7 +226,7 @@ sessionsRouter.post("/:token/select", optionalAuth, requirePresenter, async (req
   }
 });
 
-sessionsRouter.post("/:token/url", optionalAuth, requirePresenter, async (req, res, next) => {
+sessionsRouter.post("/:token/url", optionalAuth, requireOperator, async (req, res, next) => {
   try {
     const described = await describeUrl(req.body?.url);
     const saved = await savePresentation({
@@ -269,7 +263,7 @@ sessionsRouter.post("/:token/url", optionalAuth, requirePresenter, async (req, r
 sessionsRouter.post(
   "/:token/files",
   optionalAuth,
-  requirePresenter,
+  requireOperator,
   uploadLimiter,
   handleMulter(upload.array("file", MAX_FILES)),
   async (req, res, next) => {
@@ -387,7 +381,7 @@ sessionsRouter.get("/:token/slides/:fileId/:index", loadSession, async (req, res
   }
 });
 
-sessionsRouter.post("/:token/end", optionalAuth, requirePresenter, async (req, res, next) => {
+sessionsRouter.post("/:token/end", optionalAuth, requireOperator, async (req, res, next) => {
   try {
     req.session.status = "ended";
     const io = req.app.get("io");

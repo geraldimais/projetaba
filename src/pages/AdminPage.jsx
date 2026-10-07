@@ -60,7 +60,7 @@ export default function AdminPage() {
         <BrandMark to="/app" />
         <div className="topbar-actions">
           <Link className="ghost" to="/app">
-            Biblioteca
+            Operador
           </Link>
           <button className="ghost" type="button" onClick={() => logout().then(() => navigate("/"))}>
             Sair
@@ -83,7 +83,7 @@ export default function AdminPage() {
                 <strong>{data.users}</strong>
               </article>
               <article className="stat">
-                <p>Apresentações</p>
+                <p>Conteúdos</p>
                 <strong>{data.presentations}</strong>
               </article>
               <article className="stat">
@@ -99,11 +99,11 @@ export default function AdminPage() {
                 <strong>{data.hours}</strong>
               </article>
               <article className="stat">
-                <p>Pico de plateia</p>
+                <p>Pico no telão</p>
                 <strong>{data.peakViewers}</strong>
               </article>
               <article className="stat">
-                <p>Entradas na plateia</p>
+                <p>Ligações ao telão</p>
                 <strong>{data.viewerJoins}</strong>
               </article>
               <article className="stat">

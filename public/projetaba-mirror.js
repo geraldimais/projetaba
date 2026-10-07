@@ -86,7 +86,7 @@
       return;
     }
     if (!isUrlDeck(activeDeck(session))) {
-      window.location.replace("/projetar/" + encodeURIComponent(token));
+      window.location.replace("/telao/" + encodeURIComponent(token));
       return;
     }
     var url = session.currentUrl || activeDeck(session).sourceUrl || "";

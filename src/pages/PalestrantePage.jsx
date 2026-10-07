@@ -1,35 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import BrandMark from "../components/BrandMark.jsx";
 import SlideStage from "../components/SlideStage.jsx";
-import UploadBar from "../components/UploadBar.jsx";
 import { api, loadPresenter } from "../lib/api.js";
-import { useAuth } from "../lib/auth.jsx";
 import { activeDeck, isUrlDeck } from "../lib/deck.js";
-import { openCinemaWindow } from "../lib/fullscreen.js";
 import { isPublicHttpUrl } from "../lib/httpUrl.js";
 import { usePageTitle } from "../lib/pageTitle.js";
 import { connectSession } from "../lib/socket.js";
-import { uploadPresentations } from "../lib/upload.js";
 
-const ACCEPT = ".pdf,.pptx,.png,.jpg,.jpeg,.webp,.mp4,.webm,.mov,.m4v";
-
-export default function PresenterPage() {
+export default function PalestrantePage() {
   const { token } = useParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
   const presenterKey = loadPresenter(token);
   const socketRef = useRef(null);
   const [session, setSession] = useState(null);
-  const [library, setLibrary] = useState([]);
   const [error, setError] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(null);
-  const [urlValue, setUrlValue] = useState("");
   const [barUrl, setBarUrl] = useState("");
   const [panelSound, setPanelSound] = useState(false);
-  const [copied, setCopied] = useState(false);
-  usePageTitle(session?.token ? `Ao vivo ${session.token} — PROJET-ABA` : "Sessão — PROJET-ABA");
+  usePageTitle(session?.token ? `Palestrante ${session.token} — PROJET-ABA` : "Palestrante — PROJET-ABA");
 
   useEffect(() => {
     let cancelled = false;
@@ -68,9 +55,6 @@ export default function PresenterPage() {
               : current
           );
         });
-        socket.on("viewers:count", ({ count }) => {
-          setSession((current) => (current ? { ...current, viewerCount: count } : current));
-        });
         socket.on("error", (payload) => {
           if (payload?.code === "FORBIDDEN") {
             setSession(null);
@@ -88,15 +72,6 @@ export default function PresenterPage() {
       socketRef.current = null;
     };
   }, [token, presenterKey]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-    api("/api/presentations")
-      .then((data) => setLibrary(data.presentations || []))
-      .catch(() => {});
-  }, [user]);
 
   const file = activeDeck(session);
   const isUrl = isUrlDeck(file);
@@ -130,78 +105,7 @@ export default function PresenterPage() {
     return Array.from({ length: file.pageCount || 0 }, (_, index) => index);
   }, [file]);
 
-  const projectionUrl = session?.projectionUrl || `${window.location.origin}/projetar/${token}`;
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(projectionUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      window.prompt("Link da apresentação", projectionUrl);
-    }
-  }
-
-  async function addFiles(list) {
-    const files = Array.from(list || []);
-    if (!files.length) {
-      return;
-    }
-    setUploading(true);
-    setError("");
-    setProgress(0);
-    try {
-      const headers = presenterKey ? { "X-Presenter-Key": presenterKey } : {};
-      const result = await uploadPresentations(files, { headers, onProgress: setProgress });
-      const created = result.presentations || [];
-      for (const deck of created) {
-        const next = await api(`/api/sessions/${encodeURIComponent(token)}/select`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ presentationId: deck.id }),
-        });
-        setSession((current) => ({ ...(current || {}), ...next.session }));
-      }
-      const libraryData = await api("/api/presentations").catch(() => null);
-      if (libraryData) {
-        setLibrary(libraryData.presentations || []);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUploading(false);
-      setProgress(null);
-    }
-  }
-
-  async function addUrl(event) {
-    event.preventDefault();
-    const url = urlValue.trim();
-    if (!isPublicHttpUrl(url)) {
-      setError("Use uma URL http ou https.");
-      return;
-    }
-    setUploading(true);
-    setError("");
-    try {
-      const headers = presenterKey ? { "X-Presenter-Key": presenterKey } : {};
-      const result = await api(`/api/sessions/${encodeURIComponent(token)}/url`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ url }),
-      });
-      setSession((current) => ({ ...current, ...result.session }));
-      setUrlValue("");
-      const libraryData = await api("/api/presentations").catch(() => null);
-      if (libraryData) {
-        setLibrary(libraryData.presentations || []);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUploading(false);
-    }
-  }
+  const decks = session?.files || [];
 
   function goUrl(event) {
     event.preventDefault();
@@ -212,30 +116,6 @@ export default function PresenterPage() {
     }
     socketRef.current?.emit("presenter:browse", { url });
     window.location.assign(`/navegar/${encodeURIComponent(token)}?role=presenter&u=${encodeURIComponent(url)}`);
-  }
-
-  async function selectDeck(presentationId) {
-    try {
-      const result = await api(`/api/sessions/${encodeURIComponent(token)}/select`, {
-        method: "POST",
-        headers: presenterKey ? { "X-Presenter-Key": presenterKey } : {},
-        body: JSON.stringify({ presentationId }),
-      });
-      setSession((current) => ({ ...current, ...result.session }));
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  async function endSession() {
-    if (!window.confirm("Encerrar esta sessão? A plateia deixa de ver o deck.")) {
-      return;
-    }
-    await api(`/api/sessions/${encodeURIComponent(token)}/end`, {
-      method: "POST",
-      headers: presenterKey ? { "X-Presenter-Key": presenterKey } : {},
-    });
-    navigate("/app");
   }
 
   if (error && !session) {
@@ -256,39 +136,11 @@ export default function PresenterPage() {
       <header className="topbar">
         <BrandMark to="/app" />
         <span className="live" role="status" aria-live="polite" aria-atomic="true">
-          AO VIVO · {session?.token} · {session?.viewerCount || 0} na plateia
+          AO VIVO · {session?.token}
         </span>
-        <div className="topbar-actions">
-          <Link className="ghost" to="/app">
-            Biblioteca
-          </Link>
-          <button className="ghost" type="button" onClick={endSession}>
-            Encerrar
-          </button>
-        </div>
       </header>
-      <div className="session-link">
-        <p className="url-kicker">Link da apresentação</p>
-        <code>{projectionUrl}</code>
-        <div className="session-link-actions">
-          <button className="cta mini" type="button" onClick={copyLink}>
-            Copiar
-          </button>
-          <button className="ghost mini" type="button" onClick={() => openCinemaWindow(projectionUrl)}>
-            Abrir
-          </button>
-          {copied ? (
-            <p className="copy-status" role="status">
-              Link copiado
-            </p>
-          ) : null}
-        </div>
-        {session?.qrDataUrl ? (
-          <img className="qr session-qr" src={session.qrDataUrl} alt={`QR da apresentação ${session.token}`} />
-        ) : null}
-      </div>
       <main id="conteudo" className="console">
-        <h1 className="sr-only">Sessão {session?.token || token}</h1>
+        <h1 className="sr-only">Painel do palestrante {session?.token || token}</h1>
         <aside className="rail" aria-label="Slides">
           <div className="thumbs">
             {thumbs.map((index) => (
@@ -304,50 +156,25 @@ export default function PresenterPage() {
               </button>
             ))}
           </div>
-          <p className="url-kicker">Biblioteca</p>
-          <div className="library-list">
-            {library.map((deck) => (
-              <button
-                key={deck.id}
-                type="button"
-                className={`thumb ${session?.activeFileId === deck.id ? "active" : ""}`}
-                aria-current={session?.activeFileId === deck.id ? "true" : undefined}
-                onClick={() => selectDeck(deck.id)}
-              >
-                <span>{deck.kind.toUpperCase()}</span>
-                <span>{deck.title}</span>
-              </button>
-            ))}
-          </div>
-          <label className="add-files">
-            {uploading ? "A enviar…" : "Acrescentar arquivos"}
-            <input
-              type="file"
-              accept={ACCEPT}
-              multiple
-              disabled={uploading}
-              aria-label="Acrescentar PDF, PPTX, imagens ou vídeos à sessão"
-              onChange={(event) => {
-                addFiles(event.target.files);
-                event.target.value = "";
-              }}
-            />
-          </label>
-          <form className="url-add compact" onSubmit={addUrl}>
-            <input
-              type="url"
-              inputMode="url"
-              placeholder="https://site.com"
-              value={urlValue}
-              disabled={uploading}
-              onChange={(event) => setUrlValue(event.target.value)}
-              aria-label="URL para projetar"
-            />
-            <button className="ghost mini" type="submit" disabled={uploading}>
-              URL
-            </button>
-          </form>
-          <UploadBar value={progress} />
+          {decks.length > 1 ? (
+            <>
+              <p className="url-kicker">Conteúdo no telão</p>
+              <div className="library-list">
+                {decks.map((deck) => (
+                  <button
+                    key={deck.fileId}
+                    type="button"
+                    className={`thumb ${session?.activeFileId === deck.fileId ? "active" : ""}`}
+                    aria-current={session?.activeFileId === deck.fileId ? "true" : undefined}
+                    onClick={() => socketRef.current?.emit("presenter:goto", { fileId: deck.fileId, index: 0 })}
+                  >
+                    <span>{(deck.kind || "").toUpperCase()}</span>
+                    <span>{deck.originalName || deck.title || deck.fileId}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
           {error ? (
             <p className="error" role="alert">
               {error}
@@ -377,7 +204,7 @@ export default function PresenterPage() {
           <div className={`dual-stage ${isUrl ? "url-mode" : ""}`}>
             {isUrl ? (
               <div className="stage stage-live url-launch">
-                <p>YouTube abre no player (imagem e som na projeção). Outros sites: Abrir site e Espelhar na projeção, marcando o áudio da aba.</p>
+                <p>YouTube abre no player. Outros sites: abrir e espelhar no telão, marcando o áudio da aba.</p>
                 <a className="cta" href={`/navegar/${encodeURIComponent(token)}?role=presenter`}>
                   Abrir site
                 </a>
@@ -387,7 +214,7 @@ export default function PresenterPage() {
                 <SlideStage
                   session={session}
                   className="stage stage-live"
-                  label="Projeção"
+                  label="Telão"
                   isPresenter
                   audible={panelSound}
                   emitMedia={(payload) => socketRef.current?.emit("presenter:media", payload)}
@@ -416,7 +243,7 @@ export default function PresenterPage() {
               className={`ghost mini ${panelSound ? "active" : ""}`}
               type="button"
               aria-pressed={panelSound}
-              title="O som da apresentação sai na tela de projeção. Ligue só se precisar ouvir no painel."
+              title="O som sai no telão. Ligue só se precisar ouvir neste painel."
               onClick={() => setPanelSound((value) => !value)}
             >
               {panelSound ? "Som no painel" : "Painel mudo"}

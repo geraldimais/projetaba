@@ -7,7 +7,7 @@ import { expandToScreen, requestCinemaFullscreen } from "../lib/fullscreen.js";
 import { usePageTitle } from "../lib/pageTitle.js";
 import { connectSession } from "../lib/socket.js";
 
-export default function ViewerPage() {
+export default function TelaoPage() {
   const { token } = useParams();
   const rootRef = useRef(null);
   const armedRef = useRef(true);
@@ -16,7 +16,7 @@ export default function ViewerPage() {
   const [error, setError] = useState("");
   const [media, setMedia] = useState(null);
   const [hint, setHint] = useState(true);
-  usePageTitle(token ? `Projeção ${token} — PROJET-ABA` : "Projeção — PROJET-ABA");
+  usePageTitle(token ? `Telão ${token} — PROJET-ABA` : "Telão — PROJET-ABA");
 
   useEffect(() => {
     let socket;
@@ -117,8 +117,8 @@ export default function ViewerPage() {
     return (
       <div className="cinema">
         <div className="wait">
-          <p>Sessão encerrada</p>
-          <Link to="/">Voltar ao início</Link>
+          <p>Projeção encerrada</p>
+          <Link to="/app">Voltar ao painel do operador</Link>
         </div>
       </div>
     );
@@ -135,7 +135,7 @@ export default function ViewerPage() {
   return (
     <div className="cinema" id="conteudo" ref={rootRef}>
       <SlideStage session={session} className="stage cinema-stage" fillViewport follow={media} audible />
-      {hint ? <p className="cinema-hint">Ecrã inteiro — clique ou toque</p> : null}
+      {hint ? <p className="cinema-hint">Telão — ecrã inteiro. Clique ou toque.</p> : null}
     </div>
   );
 }
