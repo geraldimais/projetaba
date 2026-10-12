@@ -1,22 +1,24 @@
 # PROJET-ABA
 
-Sistema de projeção para cabine AV. Três superfícies, sem acesso de participantes:
+Sistema de projeção para cabine AV. Três interfaces:
 
 1. **Operador** (`/app`) — conta autenticada. Recebe o conteúdo do palestrante (PDF, PPTX, imagem, vídeo ou URL), escolhe o que vai ao telão e abre o ecrã do projetor.
+   
 2. **Palestrante** (`/palestrante/{token}`) — só controla o que está no telão (slides, troca de deck, URL). Não carrega ficheiros nem encerra a sessão.
+   
 3. **Telão** (`/telao/{token}`) — ecrã cheio no computador ligado ao projetor. Aberto pelo operador.
 
-Não há entrada de plateia, código público, QR nem `/ver` no escopo inicial.
+
 
 ## Fluxo
 
 1. O operador cria conta na home e entra no painel.
 2. Carrega o material (ou uma URL) e escolhe o que projetar.
 3. **Projetar no telão** cria a sessão. O operador abre `/telao/{token}` no PC do projetor.
-4. O operador envia ao palestrante o link `/palestrante/{token}#k=…` (chave no fragmento, não fica no servidor de logs do referer).
+4. O operador envia ao palestrante o link `/palestrante/{token}#k=…`
 5. O palestrante avança com **Próximo**, **Anterior**, miniaturas ou setas do teclado.
 
-Rotas antigas redireccionam: `/sessao/{token}` → palestrante; `/projetar/{token}` e `/ver/{token}` → telão; `/entrar` → home.
+
 
 ## Stack
 
