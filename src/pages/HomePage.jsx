@@ -57,7 +57,7 @@ export default function HomePage() {
       </header>
       <main id="conteudo" className="home home-auth">
         <section className="home-copy">
-          <img className="home-logo" src="/brand-logo.png" alt="PROJET-ABA" />
+          <img className="home-logo" src="/brand-logo.png?v=20261012" alt="PROJET-ABA" />
           <h1>Opere o telão. O palestrante só controla.</h1>
           <p>
             Crie a conta do operador, receba o conteúdo, abra o telão no projetor e envie ao palestrante o link dos

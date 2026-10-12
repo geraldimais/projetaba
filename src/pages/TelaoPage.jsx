@@ -15,6 +15,7 @@ export default function TelaoPage() {
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState("");
   const [media, setMedia] = useState(null);
+  const [zoom, setZoom] = useState({ scale: 1, x: 0, y: 0 });
   const [hint, setHint] = useState(true);
   usePageTitle(token ? `Telão ${token} — PROJET-ABA` : "Telão — PROJET-ABA");
 
@@ -28,6 +29,9 @@ export default function TelaoPage() {
           return;
         }
         setSession(snapshot);
+        if (snapshot.zoom) {
+          setZoom(snapshot.zoom);
+        }
         const active = activeDeck(snapshot);
         if (isUrlDeck(active)) {
           window.location.replace(`/navegar/${encodeURIComponent(token)}`);
@@ -41,8 +45,13 @@ export default function TelaoPage() {
             return;
           }
           setSession(next);
+          if (next.zoom) {
+            setZoom(next.zoom);
+          }
         });
+        socket.on("view:zoom", setZoom);
         socket.on("slide:changed", (payload) => {
+          setZoom({ scale: 1, x: 0, y: 0 });
           setSession((current) => {
             const next = current
               ? {
@@ -134,7 +143,7 @@ export default function TelaoPage() {
 
   return (
     <div className="cinema" id="conteudo" ref={rootRef}>
-      <SlideStage session={session} className="stage cinema-stage" fillViewport follow={media} audible />
+      <SlideStage session={session} className="stage cinema-stage" fillViewport follow={media} audible zoom={zoom} />
       {hint ? <p className="cinema-hint">Telão — ecrã inteiro. Clique ou toque.</p> : null}
     </div>
   );

@@ -198,7 +198,7 @@ a.cta, a.ghost { color: inherit; }
 }
 .home-logo {
   display: block;
-  width: min(380px, 100%);
+  width: min(460px, 100%);
   height: auto;
   margin: 0 0 18px;
   background: transparent;
@@ -818,6 +818,7 @@ a.cta, a.ghost { color: inherit; }
   .deck-grid { grid-template-columns: 1fr; }
   .session-link { padding: 10px 12px; }
   .session-qr { width: 64px; height: 64px; }
+  .mail-grid { grid-template-columns: 1fr; }
   .url-add, .url-bar { flex-wrap: wrap; }
   .url-add .cta, .url-bar .cta, .url-bar .ghost { flex: 1; }
   .url-frame { min-height: 42vh; }
@@ -829,6 +830,265 @@ a.cta, a.ghost { color: inherit; }
   .qr { width: 140px; height: 140px; }
   .who { display: none; }
   .metrics-table { font-size: 0.8rem; }
+}
+
+.shell-palestrante {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  grid-template-rows: var(--bar-h) minmax(0, 1fr);
+}
+.console-palestrante {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.console-palestrante .stage-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  order: 1;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+.console-palestrante .stage-wrap:has(.url-bar) {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.console-palestrante .dual-stage {
+  position: relative;
+  display: block;
+  padding: 0;
+  min-height: 0;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  background: #111;
+}
+.console-palestrante .stage-live {
+  min-height: 0;
+  height: 100%;
+  aspect-ratio: auto;
+  border: 0;
+}
+.console-palestrante .stage-live > img,
+.console-palestrante .stage-live > canvas,
+.console-palestrante .pptx-frame,
+.console-palestrante .pptx-canvas {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+}
+.console-palestrante .pptx-frame {
+  aspect-ratio: auto;
+}
+.stage-zoom {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(var(--zx, 0), var(--zy, 0)) scale(var(--zs, 1));
+  transform-origin: center center;
+  will-change: transform;
+}
+.dual-stage.is-zoomed {
+  cursor: grab;
+}
+.dual-stage.is-zoomed:active {
+  cursor: grabbing;
+}
+.dual-stage.is-zoomed .stage-arrow {
+  pointer-events: none;
+  opacity: 0.28;
+}
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.zoom-controls .ghost {
+  min-width: 44px;
+  padding: 0 8px;
+}
+.mail-card, .inbox-card {
+  margin: 24px 0;
+  padding: 18px;
+  background: var(--bg-panel);
+  border: var(--border);
+  border-radius: var(--radius-md);
+}
+.mail-form, .mail-grid {
+  display: grid;
+  gap: 12px;
+}
+.mail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.mail-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+.mail-form input:not([type="checkbox"]) {
+  min-height: var(--touch-min);
+  padding: 0 10px;
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-void);
+  color: var(--text);
+}
+.mail-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.inbox-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.inbox-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: var(--border);
+  border-radius: var(--radius-sm);
+}
+.inbox-list em {
+  display: block;
+  font-style: normal;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.stage-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  width: 56px;
+  height: 88px;
+  min-width: var(--touch-min);
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.22);
+  color: rgba(244, 247, 251, 0.72);
+  font-size: 2.6rem;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+}
+.stage-arrow span {
+  display: block;
+  transform: translateY(-2px);
+}
+.stage-arrow:hover,
+.stage-arrow:focus-visible {
+  background: rgba(2, 6, 23, 0.48);
+  color: #fff;
+}
+.stage-arrow:disabled {
+  opacity: 0.18;
+  cursor: default;
+}
+.stage-arrow-prev { left: max(6px, env(safe-area-inset-left)); }
+.stage-arrow-next { right: max(6px, env(safe-area-inset-right)); }
+.presenter-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  order: 2;
+  flex: 0 0 auto;
+  padding: 6px 10px max(8px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--cyan-line);
+}
+.presenter-strip .thumbs,
+.presenter-strip .library-list {
+  display: flex;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.presenter-strip .thumbs::-webkit-scrollbar,
+.presenter-strip .library-list::-webkit-scrollbar {
+  display: none;
+}
+.presenter-strip .thumb {
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  grid-template-columns: 1fr;
+  padding: 0;
+  font-size: 0.72rem;
+}
+.presenter-strip .transport-count {
+  flex: 0 0 auto;
+  min-width: 3.5rem;
+  font-size: 0.85rem;
+}
+.presenter-error {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 64px;
+  margin: 0;
+  z-index: 7;
+}
+@media (max-width: 1100px) {
+  .console-palestrante.console {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+  }
+  .console-palestrante .stage-wrap {
+    order: 1;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+  .console-palestrante .presenter-strip {
+    order: 2;
+  }
+}
+@media (max-width: 720px) {
+  .shell-palestrante {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .shell-palestrante .topbar {
+    flex-wrap: nowrap;
+    padding: max(6px, env(safe-area-inset-top)) 10px 6px;
+  }
+  .stage-arrow {
+    width: 48px;
+    height: 96px;
+    font-size: 2.4rem;
+    background: rgba(2, 6, 23, 0.18);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

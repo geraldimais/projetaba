@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import { createApp } from "./app.js";
 import { PORT, UPLOADS } from "./config.js";
 import { initDb } from "./db.js";
+import { startMailPoller } from "./services/mailInbox.js";
 import { startGc } from "./services/sessionStore.js";
 import { bindSocket, restoreLiveSessions } from "./socket/index.js";
 
@@ -32,6 +33,7 @@ initDb()
     server.timeout = 15 * 60 * 1000;
     server.headersTimeout = 16 * 60 * 1000;
     server.requestTimeout = 15 * 60 * 1000;
+    startMailPoller();
     server.listen(PORT, () => {
       console.log(`PROJET-ABA on port ${PORT}`);
     });

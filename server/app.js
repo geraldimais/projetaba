@@ -7,6 +7,7 @@ import { DIST } from "./config.js";
 import { adminRouter } from "./routes/admin.js";
 import { authRouter } from "./routes/auth.js";
 import { browseRouter } from "./routes/browse.js";
+import { inboxRouter } from "./routes/inbox.js";
 import { presentationsRouter } from "./routes/presentations.js";
 import { sessionsRouter } from "./routes/sessions.js";
 import { siteRouter } from "./routes/site.js";
@@ -32,6 +33,7 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/presentations", presentationsRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/inbox", inboxRouter);
   app.use("/api/sessions", sessionsRouter);
   app.use("/api/browse", browseRouter);
   app.use("/navegar", siteRouter);

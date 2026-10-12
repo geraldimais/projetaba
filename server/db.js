@@ -18,6 +18,8 @@ async function loadJson() {
   await fs.mkdir(LIBRARY, { recursive: true });
   try {
     json = JSON.parse(await fs.readFile(JSON_PATH, "utf8"));
+    json.mailSettings = json.mailSettings || null;
+    json.mailInbox = json.mailInbox || [];
   } catch {
     json = {
       users: [],
@@ -26,6 +28,8 @@ async function loadJson() {
       sessions: [],
       sessionFiles: [],
       events: [],
+      mailSettings: null,
+      mailInbox: [],
       nextUserId: 1,
       nextEventId: 1,
     };
@@ -139,6 +143,45 @@ async function migrateMysql() {
       INDEX (session_token),
       INDEX (type),
       INDEX (created_at)
+    )
+  `);
+  await mysqlQuery(`
+    CREATE TABLE IF NOT EXISTS mail_settings (
+      id TINYINT UNSIGNED PRIMARY KEY,
+      imap_host VARCHAR(190) NOT NULL DEFAULT 'imap.hostinger.com',
+      imap_port INT NOT NULL DEFAULT 993,
+      imap_secure TINYINT NOT NULL DEFAULT 1,
+      smtp_host VARCHAR(190) NOT NULL DEFAULT 'smtp.hostinger.com',
+      smtp_port INT NOT NULL DEFAULT 465,
+      smtp_secure TINYINT NOT NULL DEFAULT 1,
+      email VARCHAR(190) NOT NULL DEFAULT '',
+      password_enc TEXT NULL,
+      poll_seconds INT NOT NULL DEFAULT 60,
+      enabled TINYINT NOT NULL DEFAULT 0,
+      last_error VARCHAR(500) NULL,
+      last_sync_at DATETIME NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+  await mysqlQuery(`
+    CREATE TABLE IF NOT EXISTS mail_inbox (
+      id CHAR(16) PRIMARY KEY,
+      message_uid VARCHAR(190) NOT NULL,
+      message_id VARCHAR(255) NOT NULL,
+      from_addr VARCHAR(190) NOT NULL,
+      subject VARCHAR(255) NOT NULL,
+      received_at DATETIME NOT NULL,
+      filename VARCHAR(180) NOT NULL,
+      mime VARCHAR(120) NOT NULL,
+      kind VARCHAR(16) NOT NULL,
+      size_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
+      stored_rel_path VARCHAR(255) NOT NULL,
+      status VARCHAR(16) NOT NULL DEFAULT 'pending',
+      presentation_id CHAR(16) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_mail_item (message_id, filename),
+      INDEX (status),
+      INDEX (received_at)
     )
   `);
 }
@@ -667,4 +710,225 @@ export async function adminOverview() {
 
 export function userFromRow(row) {
   return publicUser(row);
+}
+
+function publicMailSettings(row) {
+  if (!row) {
+    return {
+      imapHost: "imap.hostinger.com",
+      imapPort: 993,
+      imapSecure: true,
+      smtpHost: "smtp.hostinger.com",
+      smtpPort: 465,
+      smtpSecure: true,
+      email: "",
+      hasPassword: false,
+      pollSeconds: 60,
+      enabled: false,
+      lastError: null,
+      lastSyncAt: null,
+    };
+  }
+  return {
+    imapHost: row.imap_host || row.imapHost || "imap.hostinger.com",
+    imapPort: Number(row.imap_port ?? row.imapPort ?? 993),
+    imapSecure: Boolean(Number(row.imap_secure ?? row.imapSecure ?? 1)),
+    smtpHost: row.smtp_host || row.smtpHost || "smtp.hostinger.com",
+    smtpPort: Number(row.smtp_port ?? row.smtpPort ?? 465),
+    smtpSecure: Boolean(Number(row.smtp_secure ?? row.smtpSecure ?? 1)),
+    email: row.email || "",
+    hasPassword: Boolean(row.password_enc || row.passwordEnc),
+    pollSeconds: Number(row.poll_seconds ?? row.pollSeconds ?? 60),
+    enabled: Boolean(Number(row.enabled ?? 0)),
+    lastError: row.last_error ?? row.lastError ?? null,
+    lastSyncAt: row.last_sync_at ?? row.lastSyncAt ?? null,
+  };
+}
+
+export async function getMailSettingsRow() {
+  if (pool) {
+    const rows = await mysqlQuery("SELECT * FROM mail_settings WHERE id = 1 LIMIT 1");
+    return rows[0] || null;
+  }
+  return json.mailSettings || null;
+}
+
+export async function getMailSettings() {
+  return publicMailSettings(await getMailSettingsRow());
+}
+
+export async function saveMailSettings(input) {
+  const current = await getMailSettingsRow();
+  const next = {
+    imap_host: String(input.imapHost || "imap.hostinger.com").slice(0, 190),
+    imap_port: Number(input.imapPort) || 993,
+    imap_secure: input.imapSecure === false ? 0 : 1,
+    smtp_host: String(input.smtpHost || "smtp.hostinger.com").slice(0, 190),
+    smtp_port: Number(input.smtpPort) || 465,
+    smtp_secure: input.smtpSecure === false ? 0 : 1,
+    email: String(input.email || "").trim().toLowerCase().slice(0, 190),
+    password_enc: input.passwordEnc !== undefined ? input.passwordEnc : current?.password_enc || current?.passwordEnc || "",
+    poll_seconds: Math.min(600, Math.max(30, Number(input.pollSeconds) || 60)),
+    enabled: input.enabled ? 1 : 0,
+    last_error: input.lastError === undefined ? current?.last_error || current?.lastError || null : input.lastError,
+    last_sync_at: input.lastSyncAt === undefined ? current?.last_sync_at || current?.lastSyncAt || null : input.lastSyncAt,
+  };
+  if (pool) {
+    await mysqlQuery(
+      `INSERT INTO mail_settings
+        (id, imap_host, imap_port, imap_secure, smtp_host, smtp_port, smtp_secure, email, password_enc, poll_seconds, enabled, last_error, last_sync_at)
+       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+        imap_host = VALUES(imap_host),
+        imap_port = VALUES(imap_port),
+        imap_secure = VALUES(imap_secure),
+        smtp_host = VALUES(smtp_host),
+        smtp_port = VALUES(smtp_port),
+        smtp_secure = VALUES(smtp_secure),
+        email = VALUES(email),
+        password_enc = VALUES(password_enc),
+        poll_seconds = VALUES(poll_seconds),
+        enabled = VALUES(enabled),
+        last_error = VALUES(last_error),
+        last_sync_at = VALUES(last_sync_at)`,
+      [
+        next.imap_host,
+        next.imap_port,
+        next.imap_secure,
+        next.smtp_host,
+        next.smtp_port,
+        next.smtp_secure,
+        next.email,
+        next.password_enc,
+        next.poll_seconds,
+        next.enabled,
+        next.last_error,
+        next.last_sync_at,
+      ]
+    );
+  } else {
+    json.mailSettings = {
+      ...next,
+      imapHost: next.imap_host,
+      imapPort: next.imap_port,
+      imapSecure: next.imap_secure,
+      smtpHost: next.smtp_host,
+      smtpPort: next.smtp_port,
+      smtpSecure: next.smtp_secure,
+      passwordEnc: next.password_enc,
+      pollSeconds: next.poll_seconds,
+      lastError: next.last_error,
+      lastSyncAt: next.last_sync_at,
+    };
+    await saveJson();
+  }
+  return getMailSettings();
+}
+
+export function publicInboxItem(row) {
+  return {
+    id: row.id,
+    from: row.from_addr || row.fromAddr || row.from,
+    subject: row.subject,
+    receivedAt: row.received_at || row.receivedAt,
+    filename: row.filename,
+    mime: row.mime,
+    kind: row.kind,
+    sizeBytes: Number(row.size_bytes ?? row.sizeBytes ?? 0),
+    status: row.status,
+    presentationId: row.presentation_id || row.presentationId || null,
+  };
+}
+
+export async function listMailInbox(status = "pending") {
+  if (pool) {
+    const rows = status
+      ? await mysqlQuery("SELECT * FROM mail_inbox WHERE status = ? ORDER BY received_at DESC LIMIT 80", [status])
+      : await mysqlQuery("SELECT * FROM mail_inbox ORDER BY received_at DESC LIMIT 80");
+    return rows.map(publicInboxItem);
+  }
+  return (json.mailInbox || [])
+    .filter((item) => !status || item.status === status)
+    .sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt)))
+    .slice(0, 80)
+    .map((item) => publicInboxItem({ ...item, from_addr: item.from, received_at: item.receivedAt, size_bytes: item.sizeBytes, presentation_id: item.presentationId }));
+}
+
+export async function getMailInboxItem(id) {
+  if (pool) {
+    const rows = await mysqlQuery("SELECT * FROM mail_inbox WHERE id = ? LIMIT 1", [id]);
+    return rows[0] || null;
+  }
+  return (json.mailInbox || []).find((item) => item.id === id) || null;
+}
+
+export async function insertMailInbox(item) {
+  if (pool) {
+    try {
+      await mysqlQuery(
+        `INSERT INTO mail_inbox
+          (id, message_uid, message_id, from_addr, subject, received_at, filename, mime, kind, size_bytes, stored_rel_path, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+        [
+          item.id,
+          item.messageUid,
+          item.messageId,
+          item.from,
+          item.subject,
+          item.receivedAt,
+          item.filename,
+          item.mime,
+          item.kind,
+          item.sizeBytes,
+          item.storedRelPath,
+        ]
+      );
+      return true;
+    } catch (error) {
+      if (String(error.code) === "ER_DUP_ENTRY") {
+        return false;
+      }
+      throw error;
+    }
+  }
+  json.mailInbox = json.mailInbox || [];
+  if (json.mailInbox.some((row) => row.messageId === item.messageId && row.filename === item.filename)) {
+    return false;
+  }
+  json.mailInbox.unshift({
+    id: item.id,
+    messageUid: item.messageUid,
+    messageId: item.messageId,
+    from: item.from,
+    subject: item.subject,
+    receivedAt: item.receivedAt instanceof Date ? item.receivedAt.toISOString() : item.receivedAt,
+    filename: item.filename,
+    mime: item.mime,
+    kind: item.kind,
+    sizeBytes: item.sizeBytes,
+    storedRelPath: item.storedRelPath,
+    status: "pending",
+    presentationId: null,
+  });
+  await saveJson();
+  return true;
+}
+
+export async function updateMailInbox(id, patch) {
+  const current = await getMailInboxItem(id);
+  if (!current) {
+    return null;
+  }
+  if (pool) {
+    await mysqlQuery("UPDATE mail_inbox SET status = ?, presentation_id = ? WHERE id = ?", [
+      patch.status || current.status,
+      patch.presentationId ?? current.presentation_id ?? null,
+      id,
+    ]);
+    return getMailInboxItem(id);
+  }
+  current.status = patch.status || current.status;
+  current.presentationId = patch.presentationId ?? current.presentationId ?? null;
+  await saveJson();
+  return current;
 }

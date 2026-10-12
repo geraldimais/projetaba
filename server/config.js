@@ -19,6 +19,7 @@ export const DIST = path.join(ROOT, "dist");
 export const DATA = defaultDataDir();
 export const UPLOADS = path.join(DATA, "uploads");
 export const LIBRARY = path.join(DATA, "library");
+export const MAILBOX = path.join(DATA, "mailbox");
 export const PORT = Number(process.env.PORT) || 3001;
 export const PUBLIC_URL = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 export const IS_PROD = process.env.NODE_ENV === "production" || PUBLIC_URL.startsWith("https");

@@ -104,6 +104,7 @@ sessionsRouter.post("/", requireAuth, createLimiter, async (req, res, next) => {
       currentIndex: 0,
       activeFileId: null,
       files: [],
+      zoom: { scale: 1, x: 0, y: 0 },
       presenterSocketId: null,
       viewers: new Map(),
       viewerPeak: 0,

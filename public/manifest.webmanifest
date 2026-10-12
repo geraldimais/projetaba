@@ -8,7 +8,7 @@
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "/brand-mark.png",
+      "src": "/brand-mark.png?v=20261012",
       "sizes": "192x192",
       "type": "image/png"
     }

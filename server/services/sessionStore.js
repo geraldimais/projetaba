@@ -23,6 +23,7 @@ export function publicSnapshot(session) {
     activeFileId: session.activeFileId,
     currentUrl: session.currentUrl || null,
     scroll: session.scroll || { x: 0, y: 0, key: "document" },
+    zoom: session.zoom || { scale: 1, x: 0, y: 0 },
     viewerCount: session.viewers.size,
     files: session.files.map((file) => ({
       fileId: file.fileId,

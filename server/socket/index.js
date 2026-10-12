@@ -5,6 +5,7 @@ import { attachPresentation } from "../services/fileProcessor.js";
 import { addViewer, getSession, publicSnapshot, removeViewer, saveSession, touch } from "../services/sessionStore.js";
 import { assertPublicHttpUrl, normalizeHttpUrl } from "../util/publicUrl.js";
 import { keysMatch, tokenKey } from "../util/tokens.js";
+import { clampZoom } from "../util/zoom.js";
 
 function clampIndex(session, fileId, index) {
   const file = session.files.find((item) => item.fileId === fileId) || session.files[0];
@@ -76,6 +77,7 @@ function broadcastSlide(io, room, session, next) {
   }
   session.slideChanges = (session.slideChanges || 0) + 1;
   session.media = { playing: true, time: 0, at: Date.now() };
+  session.zoom = { scale: 1, x: 0, y: 0 };
   touch(session);
   updateSessionStats(session.token, {
     active_file_id: next.fileId,
@@ -90,6 +92,7 @@ function broadcastSlide(io, room, session, next) {
     payload: next,
   }).catch(() => {});
   io.to(room).emit("slide:changed", { ...next, currentUrl: session.currentUrl });
+  io.to(room).emit("view:zoom", session.zoom);
   io.to(room).emit("session:state", publicSnapshot(session));
   io.to(room).emit("view:media", session.media);
 }
@@ -110,6 +113,7 @@ export async function restoreLiveSessions() {
       activeFileId: row.active_file_id || row.activeFileId || null,
       files: [],
       presenterSocketId: null,
+      zoom: { scale: 1, x: 0, y: 0 },
       viewers: new Map(),
       viewerPeak: Number(row.viewer_peak ?? row.viewerPeak ?? 0),
       viewerJoins: Number(row.viewer_joins ?? row.viewerJoins ?? 0),
@@ -203,6 +207,9 @@ export function bindSocket(io) {
     if (!isPresenter && session.media) {
       socket.emit("view:media", session.media);
     }
+    if (session.zoom) {
+      socket.emit("view:zoom", session.zoom);
+    }
 
     if (!isPresenter && session.yt) {
       socket.emit("view:yt", session.yt);
@@ -289,6 +296,15 @@ export function bindSocket(io) {
       };
       touch(session);
       socket.broadcast.to(room).emit("view:media", session.media);
+    });
+
+    socket.on("presenter:zoom", (payload = {}) => {
+      if (!isPresenter) {
+        return;
+      }
+      session.zoom = clampZoom(payload);
+      touch(session);
+      io.to(room).emit("view:zoom", session.zoom);
     });
 
     socket.on("presenter:scroll", (payload = {}) => {

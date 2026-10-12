@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getPptxDeck } from "../lib/pptxDeck.js";
+import { zoomStyle } from "../lib/zoom.js";
 import UrlFrame from "./UrlFrame.jsx";
 import VideoLayer from "./VideoLayer.jsx";
 
@@ -104,6 +105,7 @@ export default function SlideStage({
   follow,
   audible = false,
   showMedia = true,
+  zoom,
 }) {
   const canvasRef = useRef(null);
   const file =
@@ -206,10 +208,12 @@ export default function SlideStage({
 
   const stageLabel = `${label || "Slide"} ${index + 1} de ${file.pageCount}`;
   const interactiveStage = file.kind === "url" || file.kind === "video" || (file.kind === "pptx" && clips.length);
+  const zoomVars = zoom ? zoomStyle(zoom) : undefined;
 
   return (
     <div className={className} aria-label={interactiveStage ? undefined : stageLabel} role={interactiveStage ? undefined : "img"}>
       {label ? <span className="stage-label">{label}</span> : null}
+      <div className="stage-zoom" style={zoomVars}>
       {file.kind === "url" ? (
         <UrlFrame url={currentUrl} interactive={interactive} fillViewport={fillViewport} onNavigate={onNavigate} />
       ) : file.kind === "pdf" ? (
@@ -243,6 +247,7 @@ export default function SlideStage({
       ) : (
         <img src={imageSrc} alt={stageLabel} />
       )}
+      </div>
     </div>
   );
 }

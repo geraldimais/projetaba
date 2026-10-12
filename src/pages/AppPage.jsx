@@ -39,6 +39,7 @@ export default function AppPage() {
   const [error, setError] = useState("");
   const [hot, setHot] = useState(false);
   const [copied, setCopied] = useState("");
+  const [inbox, setInbox] = useState([]);
   usePageTitle("Operador — PROJET-ABA");
 
   useEffect(() => {
@@ -49,10 +50,12 @@ export default function AppPage() {
     Promise.all([
       api("/api/presentations", { signal: controller.signal }),
       api("/api/sessions/live", { signal: controller.signal }),
+      api("/api/inbox", { signal: controller.signal }),
     ])
-      .then(([library, current]) => {
+      .then(([library, current, mailbox]) => {
         setDecks(library.presentations || []);
         setLive(current.session);
+        setInbox(mailbox.items || []);
       })
       .catch((err) => {
         if (err.name !== "AbortError") {
@@ -189,7 +192,7 @@ export default function AppPage() {
         <div className="topbar-actions">
           {user?.role === "admin" ? (
             <Link className="ghost" to="/admin">
-              Métricas
+              Administração
             </Link>
           ) : null}
           <span className="who">{user?.name}</span>
@@ -269,6 +272,83 @@ export default function AppPage() {
         </div>
         <UploadBar value={progress} label={progress != null ? `A enviar ${progress}%` : null} />
 
+        {inbox.length ? (
+          <section className="inbox-card" aria-labelledby="inbox-title">
+            <div className="dash-head">
+              <div>
+                <p className="eyebrow">Recebido por e-mail</p>
+                <h2 id="inbox-title">Anexos na caixa</h2>
+              </div>
+              <button
+                className="ghost mini"
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    const result = await api("/api/inbox/sync", { method: "POST" });
+                    setInbox(result.items || []);
+                  } catch (err) {
+                    setError(err.message);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Atualizar caixa
+              </button>
+            </div>
+            <ul className="inbox-list">
+              {inbox.map((item) => (
+                <li key={item.id}>
+                  <div>
+                    <strong>{item.filename}</strong>
+                    <em>
+                      {item.kind.toUpperCase()} · {item.from || "remetente"} · {item.subject}
+                    </em>
+                  </div>
+                  <div className="deck-actions">
+                    <button
+                      className="cta mini"
+                      type="button"
+                      disabled={busy}
+                      onClick={async () => {
+                        setBusy(true);
+                        setError("");
+                        try {
+                          const result = await api(`/api/inbox/${item.id}/import`, { method: "POST" });
+                          if (result.presentation) {
+                            setDecks((current) => [result.presentation, ...current]);
+                            setSelected((current) => [...current, result.presentation.id]);
+                          }
+                          setInbox(result.items || []);
+                        } catch (err) {
+                          setError(err.message);
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Adicionar à apresentação
+                    </button>
+                    <button
+                      className="ghost mini"
+                      type="button"
+                      disabled={busy}
+                      onClick={async () => {
+                        const result = await api(`/api/inbox/${item.id}/ignore`, { method: "POST" });
+                        setInbox(result.items || []);
+                      }}
+                    >
+                      Ignorar
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
         <form className="url-add" onSubmit={addUrl}>
           <label>
             Projetar um site
@@ -285,6 +365,30 @@ export default function AppPage() {
             Carregar URL
           </button>
         </form>
+
+        {!inbox.length ? (
+          <p className="url-note">
+            Conteúdo enviado para a caixa de e-mail configurada no admin aparece aqui.{" "}
+            <button
+              className="ghost mini"
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const result = await api("/api/inbox/sync", { method: "POST" });
+                  setInbox(result.items || []);
+                } catch (err) {
+                  setError(err.message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Verificar e-mail
+            </button>
+          </p>
+        ) : null}
 
         {error ? (
           <p className="error" role="alert">
