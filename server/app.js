@@ -4,6 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { DIST } from "./config.js";
+import { accountRouter } from "./routes/account.js";
 import { adminRouter } from "./routes/admin.js";
 import { authRouter } from "./routes/auth.js";
 import { browseRouter } from "./routes/browse.js";
@@ -31,6 +32,7 @@ export function createApp() {
   });
 
   app.use("/api/auth", authRouter);
+  app.use("/api/account", accountRouter);
   app.use("/api/presentations", presentationsRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api/inbox", inboxRouter);

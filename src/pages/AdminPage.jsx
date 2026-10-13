@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
-import BrandMark from "../components/BrandMark.jsx";
+import { Navigate, useNavigate } from "react-router-dom";
+import AppSidebar from "../components/AppSidebar.jsx";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
 import { usePageTitle } from "../lib/pageTitle.js";
@@ -130,18 +130,9 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="shell">
-      <header className="topbar">
-        <BrandMark to="/app" />
-        <div className="topbar-actions">
-          <Link className="ghost" to="/app">
-            Operador
-          </Link>
-          <button className="ghost" type="button" onClick={() => logout().then(() => navigate("/"))}>
-            Sair
-          </button>
-        </div>
-      </header>
+    <div className="app-frame">
+      <AppSidebar active="admin" user={user} onLogout={() => logout().then(() => navigate("/"))} />
+      <div className="shell app-main">
       <main id="conteudo" className="dash">
         <p className="eyebrow">Admin master</p>
         <h1>Administração</h1>
@@ -363,6 +354,7 @@ export default function AdminPage() {
           <p className="wait">A carregar métricas…</p>
         )}
       </main>
+      </div>
     </div>
   );
 }

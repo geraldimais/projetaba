@@ -7,6 +7,7 @@ import { AuthProvider } from "./lib/auth.jsx";
 const HomePage = lazy(() => import("./pages/HomePage.jsx"));
 const AppPage = lazy(() => import("./pages/AppPage.jsx"));
 const AdminPage = lazy(() => import("./pages/AdminPage.jsx"));
+const MailSettingsPage = lazy(() => import("./pages/MailSettingsPage.jsx"));
 const PalestrantePage = lazy(() => import("./pages/PalestrantePage.jsx"));
 const TelaoPage = lazy(() => import("./pages/TelaoPage.jsx"));
 
@@ -37,6 +38,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/app" element={<AppPage />} />
+            <Route path="/app/email" element={<MailSettingsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/palestrante/:token" element={<PalestrantePage />} />
             <Route path="/telao/:token" element={<TelaoPage />} />

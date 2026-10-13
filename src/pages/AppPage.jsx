@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
-import BrandMark from "../components/BrandMark.jsx";
+import { Navigate, useNavigate } from "react-router-dom";
+import AppSidebar from "../components/AppSidebar.jsx";
 import UploadBar from "../components/UploadBar.jsx";
 import { api, loadPresenter, presenterShareUrl, savePresenter, telaoUrl } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -186,21 +186,14 @@ export default function AppPage() {
   }
 
   return (
-    <div className="shell">
-      <header className="topbar">
-        <BrandMark to="/app" />
-        <div className="topbar-actions">
-          {user?.role === "admin" ? (
-            <Link className="ghost" to="/admin">
-              Administração
-            </Link>
-          ) : null}
-          <span className="who">{user?.name}</span>
-          <button className="ghost" type="button" onClick={() => logout().then(() => navigate("/"))}>
-            Sair
-          </button>
-        </div>
-      </header>
+    <div className="app-frame">
+      <AppSidebar
+        active="operador"
+        user={user}
+        inboxCount={inbox.length}
+        onLogout={() => logout().then(() => navigate("/"))}
+      />
+      <div className="shell app-main">
       <main id="conteudo" className="dash">
         <div className="dash-head">
           <div>
@@ -430,6 +423,7 @@ export default function AppPage() {
           <p className="wait">Ainda não há conteúdo nesta conta. Solte um ficheiro ou carregue uma URL.</p>
         ) : null}
       </main>
+      </div>
     </div>
   );
 }

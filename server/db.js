@@ -20,6 +20,8 @@ async function loadJson() {
     json = JSON.parse(await fs.readFile(JSON_PATH, "utf8"));
     json.mailSettings = json.mailSettings || null;
     json.mailInbox = json.mailInbox || [];
+    json.passwordResets = json.passwordResets || [];
+    json.outboundMail = json.outboundMail || null;
   } catch {
     json = {
       users: [],
@@ -30,6 +32,8 @@ async function loadJson() {
       events: [],
       mailSettings: null,
       mailInbox: [],
+      passwordResets: [],
+      outboundMail: null,
       nextUserId: 1,
       nextEventId: 1,
     };
@@ -184,6 +188,27 @@ async function migrateMysql() {
       INDEX (received_at)
     )
   `);
+  await mysqlQuery(`
+    CREATE TABLE IF NOT EXISTS password_resets (
+      token_hash CHAR(64) PRIMARY KEY,
+      user_id BIGINT UNSIGNED NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX (user_id),
+      INDEX (expires_at)
+    )
+  `);
+  await mysqlQuery(`
+    CREATE TABLE IF NOT EXISTS outbound_mail (
+      id TINYINT UNSIGNED PRIMARY KEY,
+      host VARCHAR(190) NOT NULL,
+      port INT NOT NULL,
+      secure TINYINT NOT NULL DEFAULT 0,
+      user_name VARCHAR(190) NOT NULL,
+      pass_enc TEXT NOT NULL,
+      from_addr VARCHAR(190) NOT NULL
+    )
+  `);
 }
 
 function publicUser(row) {
@@ -334,6 +359,101 @@ export async function findUserByToken(token) {
     return null;
   }
   return findUserById(row.user_id);
+}
+
+export async function updateUserPassword(userId, passwordHash) {
+  if (pool) {
+    await mysqlQuery("UPDATE users SET password_hash = ? WHERE id = ?", [passwordHash, userId]);
+    await mysqlQuery("DELETE FROM auth_tokens WHERE user_id = ?", [userId]);
+    await mysqlQuery("DELETE FROM password_resets WHERE user_id = ?", [userId]);
+    return;
+  }
+  const user = json.users.find((item) => item.id === Number(userId));
+  if (user) {
+    user.password_hash = passwordHash;
+  }
+  json.tokens = json.tokens.filter((item) => item.user_id !== Number(userId));
+  json.passwordResets = (json.passwordResets || []).filter((item) => item.user_id !== Number(userId));
+  await saveJson();
+}
+
+export async function createPasswordReset(userId) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expires = new Date(Date.now() + 30 * 60 * 1000);
+  if (pool) {
+    await mysqlQuery("DELETE FROM password_resets WHERE user_id = ?", [userId]);
+    await mysqlQuery("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES (?, ?, ?)", [
+      tokenHash,
+      userId,
+      expires,
+    ]);
+    return token;
+  }
+  json.passwordResets = (json.passwordResets || []).filter((item) => item.user_id !== Number(userId));
+  json.passwordResets.push({ token_hash: tokenHash, user_id: Number(userId), expires_at: expires.toISOString() });
+  await saveJson();
+  return token;
+}
+
+export async function consumePasswordReset(token) {
+  const tokenHash = crypto.createHash("sha256").update(String(token || "")).digest("hex");
+  if (pool) {
+    const rows = await mysqlQuery(
+      "SELECT user_id FROM password_resets WHERE token_hash = ? AND expires_at > NOW() LIMIT 1",
+      [tokenHash]
+    );
+    if (!rows[0]) {
+      return null;
+    }
+    await mysqlQuery("DELETE FROM password_resets WHERE token_hash = ?", [tokenHash]);
+    return Number(rows[0].user_id);
+  }
+  const row = (json.passwordResets || []).find(
+    (item) => item.token_hash === tokenHash && new Date(item.expires_at) > new Date()
+  );
+  if (!row) {
+    return null;
+  }
+  json.passwordResets = json.passwordResets.filter((item) => item.token_hash !== tokenHash);
+  await saveJson();
+  return Number(row.user_id);
+}
+
+export async function getOutboundMailRow() {
+  if (pool) {
+    const rows = await mysqlQuery("SELECT * FROM outbound_mail WHERE id = 1 LIMIT 1");
+    return rows[0] || null;
+  }
+  return json.outboundMail || null;
+}
+
+export async function saveOutboundMail({ host, port, secure, user, passEnc, from }) {
+  const next = {
+    host: String(host || "").slice(0, 190),
+    port: Number(port) || 587,
+    secure: secure ? 1 : 0,
+    user: String(user || "").trim().slice(0, 190),
+    passEnc: String(passEnc || ""),
+    from: String(from || user || "").trim().slice(0, 190),
+  };
+  if (pool) {
+    await mysqlQuery(
+      `INSERT INTO outbound_mail (id, host, port, secure, user_name, pass_enc, from_addr)
+       VALUES (1, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+        host = VALUES(host),
+        port = VALUES(port),
+        secure = VALUES(secure),
+        user_name = VALUES(user_name),
+        pass_enc = VALUES(pass_enc),
+        from_addr = VALUES(from_addr)`,
+      [next.host, next.port, next.secure, next.user, next.passEnc, next.from]
+    );
+    return;
+  }
+  json.outboundMail = next;
+  await saveJson();
 }
 
 export async function deleteAuthToken(token) {
